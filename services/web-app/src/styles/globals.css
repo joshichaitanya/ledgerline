@@ -1,0 +1,76 @@
+:root {
+  --color-bg: #e9e7fb;
+  --color-accent: #2fbdf1;
+  --color-accent-dark: #1a9fd1;
+  --color-accent-contrast: #ffffff;
+  --color-card: #ffffff;
+  --color-text: #1e1b4b;
+  --color-muted: #6b7280;
+  --color-border: #e2e0f5;
+  --color-hover-bg: #f7f6ff;
+  --color-selected-bg: #eaf8fe;
+  /* Text-safe versions of accent/error: --color-accent itself is only
+     ~2.2:1 on white, fine for fills/borders but too faint for text. Both of
+     these are >=5:1 on every light background here (WCAG AA needs 4.5:1). */
+  --color-accent-text: #0a6f97;
+  --color-danger: #c53030;
+  /* Fill for accent shapes with --color-accent-contrast (white) text on
+     them, e.g. the primary button: white on --color-accent is only 2.17:1,
+     on this 5.62:1 (hover 7.51:1). */
+  --color-accent-strong: #0a6f97;
+  --color-accent-strong-hover: #085b7c;
+  --radius-lg: 24px;
+  --radius-md: 12px;
+}
+
+[data-theme='dark'] {
+  --color-bg: #14121f;
+  --color-accent: #7dd8f7;
+  --color-accent-dark: #5cc9f2;
+  --color-accent-contrast: #0e2430;
+  --color-card: #1f1d2e;
+  --color-text: #edecf7;
+  --color-muted: #9997ab;
+  --color-border: #33304a;
+  --color-hover-bg: #2a2740;
+  --color-selected-bg: #1c3540;
+  /* The dark theme's accent already contrasts well as text (>=8:1). */
+  --color-accent-text: #7dd8f7;
+  --color-danger: #ff7b7b;
+  /* Dark text (--color-accent-contrast) on the light accent already
+     contrasts well here: 9.92:1, hover 8.44:1. */
+  --color-accent-strong: #7dd8f7;
+  --color-accent-strong-hover: #5cc9f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+a {
+  color: var(--color-accent-text);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* A visible focus ring for keyboard users everywhere, in a color that
+   contrasts with the backgrounds (the plain accent is too faint). */
+:focus-visible {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 2px;
+}

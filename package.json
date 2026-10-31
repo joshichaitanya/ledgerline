@@ -1,0 +1,23 @@
+{
+  "name": "scalable-demo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "e2e"
+  ],
+  "scripts": {
+    "generate-mock-data": "yarn --cwd services/mock-data-generator generate-mock-data",
+    "docker:build": "docker compose build",
+    "docker:run": "docker compose up -d",
+    "docker:stop": "docker compose down",
+    "docker:rebuild": "docker compose build --no-cache && docker compose up -d",
+    "clean-slate": "docker compose down -v",
+    "backend:up": "docker compose up -d --build event-store-db pgbouncer create-transaction-service update-transaction-service delete-transaction-service get-transactions-service reference-db categories-service auth-db auth-service api-gateway",
+    "backend:stop": "docker compose stop event-store-db pgbouncer create-transaction-service update-transaction-service delete-transaction-service get-transactions-service reference-db categories-service auth-db auth-service api-gateway",
+    "migrate": "DATABASE_URL=postgresql://postgres:postgres@localhost:5435/event_store_db yarn --cwd services/create-transaction-service migrate:up && DATABASE_URL=postgresql://postgres:postgres@localhost:5433/transactions_db yarn --cwd services/db-writer-service migrate:transactions:up && DATABASE_URL=postgresql://postgres:postgres@localhost:5434/reference_db yarn --cwd services/categories-service migrate:up && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/auth_db yarn --cwd services/auth-service migrate:up",
+    "test": "yarn --cwd services/db-writer-service test && yarn --cwd services/get-transactions-service test && yarn --cwd services/create-transaction-service test && yarn --cwd services/update-transaction-service test && yarn --cwd services/delete-transaction-service test && yarn --cwd services/categories-service test",
+    "e2e": "yarn --cwd e2e test",
+    "frontend:up": "NEXT_PUBLIC_API_GATEWAY_URL=http://localhost:8000 yarn --cwd services/web-app dev -p 3100"
+  }
+}

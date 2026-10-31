@@ -1,0 +1,38 @@
+.field {
+  margin-bottom: 20px;
+  max-width: 360px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+/* The border alone (light accent, ~2.2:1) was the only focus cue - too
+   faint to see. Keep the border change, plus the global :focus-visible ring. */
+.input:focus {
+  border-color: var(--color-accent-text);
+}
+
+.inputError {
+  border-color: var(--color-danger);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: 12px;
+  margin: 6px 0 0 0;
+}

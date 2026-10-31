@@ -1,0 +1,14 @@
+{
+  "name": "mock-data-generator",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install-py-deps": "pip3 install -r requirements.txt",
+    "generate-categories": "python3 scripts/generate-categories.py",
+    "generate-users": "yarn install-py-deps && python3 scripts/generate-users.py",
+    "generate-transactions": "yarn install-py-deps && python3 scripts/generate-raw-data.py",
+    "generate-raw-data": "yarn generate-categories && yarn generate-users && yarn generate-transactions",
+    "execute-client": "yarn install-py-deps && python3 scripts/execute-client.py",
+    "generate-mock-data": "yarn generate-raw-data && yarn execute-client"
+  }
+}

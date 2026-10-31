@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-polling-consumer-service
+  namespace: scalable-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-polling-consumer-service
+  template:
+    metadata:
+      labels:
+        app: transaction-polling-consumer-service
+    spec:
+      containers:
+        - name: transaction-polling-consumer-service
+          image: transaction-polling-consumer-service:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: scalable-demo-config
+                  key: KAFKA_BROKER
+            - name: POLL_CRON_SCHEDULE
+              valueFrom:
+                configMapKeyRef:
+                  name: scalable-demo-config
+                  key: POLL_CRON_SCHEDULE
+          livenessProbe:
+            exec:
+              command: ["pgrep", "-f", "node dist/index.js"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

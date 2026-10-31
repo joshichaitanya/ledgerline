@@ -1,0 +1,686 @@
+services:
+  # Single entry point for every backend service - web-app calls only this.
+  # See infrastructure/api-gateway/README.md.
+  api-gateway:
+    image: kong:3.7
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      # Kong defaults to one worker per CPU core - on a dev machine with
+      # several cores that's several workers all fighting over a small
+      # memory limit, which OOM-kills them in a crash loop. One worker is
+      # plenty at this traffic level; a real deployment would size workers
+      # and memory together deliberately instead of using either default.
+      KONG_NGINX_WORKER_PROCESSES: "1"
+    volumes:
+      - ./infrastructure/api-gateway/kong.yml:/kong/kong.yml:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      create-transaction-service:
+        condition: service_healthy
+      update-transaction-service:
+        condition: service_healthy
+      delete-transaction-service:
+        condition: service_healthy
+      get-transactions-service:
+        condition: service_healthy
+      categories-service:
+        condition: service_healthy
+      spend-summary-cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  # One-off migration runners (docs/TODO.md item 10): each runs its
+  # database's migrations with the owning service's own image, then exits;
+  # services that need those tables wait for it to finish successfully. So
+  # `docker compose up` alone gives a fully migrated stack - no `yarn migrate`.
+  # Same job as the init containers in k8s/. node-pg-migrate holds a database
+  # lock while it runs, and skips migrations already applied, so re-running
+  # on every `up` is safe.
+  event-store-migrate:
+    build: &create-transaction-build
+      # Repo root as context, for services/toolkit - see its Dockerfile.
+      context: .
+      dockerfile: services/create-transaction-service/Dockerfile
+    # Straight to event-store-db, NOT through pgbouncer: pgbouncer's
+    # transaction pooling can hand each query a different server connection,
+    # which breaks node-pg-migrate's session-level lock.
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@event-store-db:5432/event_store_db
+    command: ["yarn", "migrate:up"]
+    depends_on:
+      event-store-db:
+        condition: service_healthy
+    restart: "no"
+
+  transactions-migrate:
+    build: &db-writer-build ./services/db-writer-service
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@transactions-db:5432/transactions_db
+    command: ["yarn", "migrate:transactions:up"]
+    depends_on:
+      transactions-db:
+        condition: service_healthy
+    restart: "no"
+
+  # Also adds the default categories (no seed step - docs/adr/0015).
+  reference-migrate:
+    build: &categories-build
+      context: .
+      dockerfile: services/categories-service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@reference-db:5432/reference_db
+    command: ["yarn", "migrate:up"]
+    depends_on:
+      reference-db:
+        condition: service_healthy
+    restart: "no"
+
+  auth-migrate:
+    build: &auth-build
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@auth-db:5432/auth_db
+    command: ["yarn", "migrate:up"]
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    restart: "no"
+
+  create-transaction-service:
+    build: *create-transaction-build
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@pgbouncer:6432/event_store_db
+      # Shared with auth-service (signs) and every service that verifies
+      # access tokens itself via toolkit's requireAuth (docs/adr/0013).
+      JWT_SECRET: local-dev-only-change-me
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      event-store-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  update-transaction-service:
+    # Repo root as context, for services/toolkit - see its Dockerfile.
+    build:
+      context: .
+      dockerfile: services/update-transaction-service/Dockerfile
+    ports:
+      - "3004:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@pgbouncer:6432/event_store_db
+      JWT_SECRET: local-dev-only-change-me
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      event-store-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+  delete-transaction-service:
+    # Repo root as context, for services/toolkit - see its Dockerfile.
+    build:
+      context: .
+      dockerfile: services/delete-transaction-service/Dockerfile
+    ports:
+      - "3005:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@pgbouncer:6432/event_store_db
+      JWT_SECRET: local-dev-only-change-me
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      event-store-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+  get-transactions-service:
+    # Repo root as context, for services/toolkit - see its Dockerfile.
+    build:
+      context: .
+      dockerfile: services/get-transactions-service/Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      # Reads the read-store that db-writer-service fills - see
+      # services/db-writer-service/README.md.
+      DATABASE_URL: postgresql://postgres:postgres@transactions-db:5432/transactions_db
+      # Cached monthly spend totals (docs/adr/0011). Optional - if Redis is
+      # down, /transactions/summary computes from transactions-db instead,
+      # which is why depends_on below doesn't require it to be healthy.
+      REDIS_URL: redis://spend-summary-cache:6379
+      JWT_SECRET: local-dev-only-change-me
+    depends_on:
+      transactions-migrate:
+        condition: service_completed_successfully
+      spend-summary-cache:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+  # Lists/creates categories in reference-db - shared defaults plus each
+  # user's own (docs/adr/0015). Replaced get-categories-service (mock data).
+  categories-service:
+    build: *categories-build
+    ports:
+      - "3002:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@reference-db:5432/reference_db
+      JWT_SECRET: local-dev-only-change-me
+    depends_on:
+      reference-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+  auth-service:
+    # Build context is the repo root, not ./services/auth-service - it needs
+    # services/toolkit alongside it (a local `file:../toolkit` dependency,
+    # see services/toolkit/README.md), which a narrower context wouldn't include.
+    build: *auth-build
+    ports:
+      - "3003:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@auth-db:5432/auth_db
+      JWT_SECRET: local-dev-only-change-me
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+  # Legacy (pre-event-store) consumer of the old `transactions` topic, which
+  # nothing publishes to any more - it can only crash-loop waiting for that
+  # topic. Behind a profile so plain `docker compose up` skips it; start it
+  # explicitly with `docker compose --profile legacy up`.
+  transaction-consumer-service:
+    profiles: ["legacy"]
+    build: ./services/transaction-consumer-service
+    environment:
+      KAFKA_BROKER: kafka:9092
+      DATABASE_URL: postgresql://postgres:postgres@transactions-db:5432/transactions_db
+    depends_on:
+      kafka:
+        condition: service_healthy
+      transactions-db:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'node dist/index.js' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # The Operation consumer: reads Debezium's event_store.public.event_store
+  # topic and applies each create/update/delete into transactions-db,
+  # idempotently and tombstone-checked - see services/db-writer-service/README.md.
+  #
+  # That topic is created by Debezium on the first event it publishes (Kafka's
+  # auto topic creation is off), so on a clean slate this crash-restarts
+  # until the first transaction is posted. restart: always covers that.
+  db-writer-service:
+    build: *db-writer-build
+    # Time to leave the Kafka consumer group cleanly on stop (see the SIGTERM
+    # handler in src/index.ts). This machine's Docker defaulted containers to
+    # a 1s stop timeout, which force-killed it mid-disconnect, so Kafka kept
+    # its partitions assigned to a dead member until the session timed out.
+    stop_grace_period: 15s
+    environment:
+      KAFKA_BROKER: kafka:9092
+      DATABASE_URL: postgresql://postgres:postgres@transactions-db:5432/transactions_db
+      # Deletes cached spend totals a change affects (docs/adr/0011).
+      # Optional, same as for get-transactions-service.
+      REDIS_URL: redis://spend-summary-cache:6379
+    depends_on:
+      kafka:
+        condition: service_healthy
+      transactions-migrate:
+        condition: service_completed_successfully
+      spend-summary-cache:
+        condition: service_started
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'node dist/index.js' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # Legacy, same as transaction-consumer-service above - behind the same profile.
+  transaction-polling-consumer-service:
+    profiles: ["legacy"]
+    build: ./services/transaction-polling-consumer-service
+    environment:
+      KAFKA_BROKER: kafka:9092
+      POLL_CRON_SCHEDULE: "*/10 * * * * *"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'node dist/index.js' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  kafka:
+    image: apache/kafka:3.8.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  # Highest-traffic piece: event_store. Every transaction write hits this
+  # directly (the heaviest traffic in the design), so it gets its own container and
+  # sits behind pgbouncer, kept apart from transactions/reference-db so
+  # reads there never compete with this write firehose.
+  event-store-db:
+    image: postgres:16-alpine
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: event_store_db
+      # Local/demo only: Postgres 16 defaults to scram-sha-256, which
+      # pgbouncer's password handling doesn't line up with out of the box,
+      # causing "wrong password type". trust skips password verification
+      # entirely for this dev setup instead of fighting the auth mismatch.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    # wal_level=logical + a replication slot are what let Debezium read the
+    # write-ahead log for CDC, instead of polling the table with queries.
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_replication_slots=4"
+      - "-c"
+      - "max_wal_senders=4"
+    volumes:
+      - event-store-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  # Connection pooler in front of event-store-db. A single Postgres instance
+  # only has so many usable direct connections; pgbouncer lets many
+  # short-lived app connections share a much smaller pool of real ones,
+  # which matters once write volume gets heavy. This is a structural gesture
+  # toward that, not an attempt to actually reach millions/sec on a laptop.
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@event-store-db:5432/event_store_db
+      LISTEN_PORT: "6432"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 20
+      AUTH_TYPE: trust
+    ports:
+      - "6432:6432"
+    depends_on:
+      event-store-db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+  # CDC: reads event-store-db's write-ahead log (via Debezium's Postgres
+  # connector, running inside Kafka Connect) and publishes every new row to
+  # Kafka. Connects straight to event-store-db, not through pgbouncer -
+  # logical replication needs a real, long-lived connection, which
+  # pgbouncer's transaction pooling mode doesn't support.
+  kafka-connect:
+    image: debezium/connect:2.7.3.Final
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: cdc-connect-cluster
+      CONFIG_STORAGE_TOPIC: cdc_connect_configs
+      OFFSET_STORAGE_TOPIC: cdc_connect_offsets
+      STATUS_STORAGE_TOPIC: cdc_connect_status
+    depends_on:
+      kafka:
+        condition: service_healthy
+      event-store-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 256M
+
+  # Runs after event-store-migrate (below), since it references the
+  # event_store table by name and fails if the table doesn't exist yet.
+  #
+  # Sets publish_via_partition_root on event_store's publication before the
+  # connector ever starts streaming - Debezium has no config property that
+  # does this itself (confirmed by testing), and without it, changes to
+  # event_store's partitions arrive tagged with the partition's own name
+  # (e.g. event_store_default), which the connector's table.include.list
+  # ("public.event_store") never matches - rows would silently never reach
+  # Kafka. See infrastructure/cdc/prepare-publication.sql.
+  event-store-publication-init:
+    image: postgres:16-alpine
+    volumes:
+      - ./infrastructure/cdc:/cdc:ro
+    depends_on:
+      event-store-migrate:
+        condition: service_completed_successfully
+    entrypoint:
+      [
+        "psql",
+        "postgresql://postgres:postgres@event-store-db:5432/event_store_db",
+        "-f",
+        "/cdc/prepare-publication.sql",
+      ]
+    restart: "no"
+
+  # Registers the Debezium connector with Kafka Connect once it's up, then
+  # exits. Kafka Connect doesn't pick up infrastructure/cdc/event-store-connector.json
+  # on its own - it only takes connector configs via its REST API - so
+  # something has to POST/PUT it in on every startup. This is that
+  # something, so nobody has to remember to run register-connector.sh by hand.
+  kafka-connect-register:
+    image: curlimages/curl:8.10.1
+    volumes:
+      - ./infrastructure/cdc:/cdc:ro
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+      event-store-publication-init:
+        condition: service_completed_successfully
+    entrypoint: ["/cdc/register-connector.sh"]
+    environment:
+      CONNECT_URL: http://kafka-connect:8083
+    restart: "no"
+
+  # transactions (the actual read-store): only written by db-writer-service,
+  # at whatever pace Kafka/CDC delivers events - not hit directly by the
+  # event_store firehose - so it's a separate, simpler instance.
+  transactions-db:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: transactions_db
+    volumes:
+      - transactions-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # Low-traffic side: categories/subcategories. Thousands/sec at most,
+  # so a plain single Postgres instance (no pooler needed) is fine here.
+  reference-db:
+    image: postgres:16-alpine
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: reference_db
+    volumes:
+      - reference-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # Credentials only (id/email/password_hash) for auth-service - its own
+  # database, so password hashes never sit next to data other services read.
+  # Its account id is the one user id everywhere (docs/adr/0012).
+  auth-db:
+    image: postgres:16-alpine
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+  # Cache for pre-computed views (daily/monthly spend totals) - the fast-read
+  # side, alongside event-store-db as the write side.
+  spend-summary-cache:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - spend-summary-cache-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+volumes:
+  event-store-db-data:
+  transactions-db-data:
+  reference-db-data:
+  auth-db-data:
+  spend-summary-cache-data:

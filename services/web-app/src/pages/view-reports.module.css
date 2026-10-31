@@ -1,0 +1,15 @@
+.monthYearPicker {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.select {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-text);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}

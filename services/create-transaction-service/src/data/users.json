@@ -1,0 +1,162 @@
+[
+  {
+    "id": 1,
+    "name": "Caroline Khan",
+    "email": "theresa14@example.com",
+    "phone": "9823473294",
+    "city": "Pamelachester",
+    "country": "Oman"
+  },
+  {
+    "id": 2,
+    "name": "Jonathon Davis",
+    "email": "walljason@example.net",
+    "phone": "791.976.9782x60543",
+    "city": "Bensonside",
+    "country": "Nepal"
+  },
+  {
+    "id": 3,
+    "name": "Justin Long",
+    "email": "djones@example.com",
+    "phone": "762-542-5108x618",
+    "city": "Lake Davidview",
+    "country": "Tunisia"
+  },
+  {
+    "id": 4,
+    "name": "Joseph Brown",
+    "email": "ayalanatalie@example.net",
+    "phone": "464-764-8285",
+    "city": "Mcdonaldfurt",
+    "country": "North Macedonia"
+  },
+  {
+    "id": 5,
+    "name": "Ruben Martinez",
+    "email": "carterpeter@example.com",
+    "phone": "958-279-8827",
+    "city": "South Coreymouth",
+    "country": "Canada"
+  },
+  {
+    "id": 6,
+    "name": "Christopher Butler",
+    "email": "jennyyoung@example.com",
+    "phone": "001-277-637-9791",
+    "city": "Meredithport",
+    "country": "Bahamas"
+  },
+  {
+    "id": 7,
+    "name": "Matthew Johnson",
+    "email": "brian29@example.com",
+    "phone": "(404)614-3122x3379",
+    "city": "Port Monique",
+    "country": "Georgia"
+  },
+  {
+    "id": 8,
+    "name": "Sheila Barnes",
+    "email": "smithjonathan@example.net",
+    "phone": "3975813251",
+    "city": "Lake Jesse",
+    "country": "Taiwan"
+  },
+  {
+    "id": 9,
+    "name": "Taylor Burke DDS",
+    "email": "catherinehayes@example.org",
+    "phone": "4522036934",
+    "city": "North Jimmy",
+    "country": "Faroe Islands"
+  },
+  {
+    "id": 10,
+    "name": "Rachel Johnson",
+    "email": "gary81@example.com",
+    "phone": "253-392-7754",
+    "city": "Aprilport",
+    "country": "Aruba"
+  },
+  {
+    "id": 11,
+    "name": "Christopher Sullivan",
+    "email": "hannahking@example.org",
+    "phone": "(613)909-9504x52230",
+    "city": "South Gabrielburgh",
+    "country": "United States Minor Outlying Islands"
+  },
+  {
+    "id": 12,
+    "name": "Ashley Butler",
+    "email": "leemelissa@example.com",
+    "phone": "(635)845-1581",
+    "city": "Clarkland",
+    "country": "Finland"
+  },
+  {
+    "id": 13,
+    "name": "Jaime Lee",
+    "email": "hamiltonashley@example.com",
+    "phone": "890.945.7377",
+    "city": "Russellfort",
+    "country": "Cuba"
+  },
+  {
+    "id": 14,
+    "name": "Jon Wood",
+    "email": "sheila21@example.net",
+    "phone": "+1-214-563-8998",
+    "city": "Lisaview",
+    "country": "Belgium"
+  },
+  {
+    "id": 15,
+    "name": "Diana Love",
+    "email": "edward92@example.org",
+    "phone": "706-480-4972",
+    "city": "Lake Joshuaton",
+    "country": "Falkland Islands (Malvinas)"
+  },
+  {
+    "id": 16,
+    "name": "Julie Miller",
+    "email": "andersonnoah@example.net",
+    "phone": "879-833-8869x9842",
+    "city": "South Lauren",
+    "country": "Gambia"
+  },
+  {
+    "id": 17,
+    "name": "Alexander Mendoza",
+    "email": "harrisvictor@example.org",
+    "phone": "631.635.2350x836",
+    "city": "Welchmouth",
+    "country": "Lithuania"
+  },
+  {
+    "id": 18,
+    "name": "Timothy Brown",
+    "email": "daniel50@example.net",
+    "phone": "481-516-1156x4883",
+    "city": "West Brandon",
+    "country": "Uzbekistan"
+  },
+  {
+    "id": 19,
+    "name": "Mark Diaz",
+    "email": "kcardenas@example.net",
+    "phone": "(974)315-1501x677",
+    "city": "Alvaradostad",
+    "country": "Tuvalu"
+  },
+  {
+    "id": 20,
+    "name": "Tammy Washington",
+    "email": "mpadilla@example.org",
+    "phone": "001-326-505-8214x9331",
+    "city": "Jordanmouth",
+    "country": "Bahrain"
+  }
+]

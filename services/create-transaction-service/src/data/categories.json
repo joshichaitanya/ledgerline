@@ -1,0 +1,306 @@
+[
+  {
+    "id": "0cb7dfea-2a07-445d-841b-0a56f42dd4f2",
+    "name": "Food & Dining",
+    "subcategories": [
+      {
+        "id": "47b4e756-585b-4706-b635-1bc67cd0827d",
+        "name": "Groceries"
+      },
+      {
+        "id": "856c18d0-8536-4f1d-bb08-ed7e538cdabc",
+        "name": "Restaurants"
+      },
+      {
+        "id": "c1419384-01a0-41c8-85ea-6997cf0182df",
+        "name": "Cafe"
+      },
+      {
+        "id": "1f66bf56-0f63-4758-84e8-53532b94d466",
+        "name": "Food Delivery"
+      },
+      {
+        "id": "33e557e3-87d2-4276-87fe-69874a5fc9ab",
+        "name": "Snacks"
+      }
+    ]
+  },
+  {
+    "id": "4e005005-08a0-4dca-9bd9-a77162235ed7",
+    "name": "Transport",
+    "subcategories": [
+      {
+        "id": "6798fbef-9e45-423d-aecf-00909b7fb290",
+        "name": "Fuel"
+      },
+      {
+        "id": "bf941785-004b-4f6a-bec2-8ef570654627",
+        "name": "Public Transport"
+      },
+      {
+        "id": "f8a36d3c-5f37-43f7-9c6e-8551728cb6cb",
+        "name": "Cab / Taxi"
+      },
+      {
+        "id": "aac07dcc-0a5e-4f50-8fdd-4c3135f73620",
+        "name": "Parking"
+      },
+      {
+        "id": "e4e3b440-074d-4540-a072-fec4c067873c",
+        "name": "Tolls"
+      },
+      {
+        "id": "0d62927f-812a-4e88-bf20-559027cde7c6",
+        "name": "Vehicle Maintenance"
+      }
+    ]
+  },
+  {
+    "id": "505e4e1e-af53-4b95-9b9f-c2138d69cc65",
+    "name": "Shopping",
+    "subcategories": [
+      {
+        "id": "386292ad-44e1-4c01-a6de-2b2278565592",
+        "name": "Clothing"
+      },
+      {
+        "id": "dcfc573e-b3d9-459b-9e64-7e9ac6cc983d",
+        "name": "Electronics"
+      },
+      {
+        "id": "925d37e6-566d-4a87-b0ac-9b636b31ea73",
+        "name": "Home & Kitchen"
+      },
+      {
+        "id": "7a5a22c1-1cc3-46d1-ae8e-299cbd4d633d",
+        "name": "Gifts"
+      },
+      {
+        "id": "9f4c4e39-3c11-41af-a8ef-2b265f7c976d",
+        "name": "Personal Care"
+      }
+    ]
+  },
+  {
+    "id": "c0a0070d-d5fb-45a3-b6eb-c507288de7e3",
+    "name": "Bills & Utilities",
+    "subcategories": [
+      {
+        "id": "f87cb17e-ee4c-4c55-89a3-482ff26b536a",
+        "name": "Rent"
+      },
+      {
+        "id": "d654fc58-15b2-40ab-803b-6b536a3b864e",
+        "name": "Electricity"
+      },
+      {
+        "id": "e6393f92-9d4e-426d-b0d7-69f8dc7788a6",
+        "name": "Water"
+      },
+      {
+        "id": "72e7bdce-7a1d-41a9-991d-ceee48a6372f",
+        "name": "Gas"
+      },
+      {
+        "id": "39bdd3f2-7068-4b39-9d16-85e01d6d379a",
+        "name": "Internet"
+      },
+      {
+        "id": "14655949-a21f-45d0-a59a-e1c16ad1f958",
+        "name": "Mobile"
+      }
+    ]
+  },
+  {
+    "id": "b98edf41-995e-4385-911d-d8ed6c7f1969",
+    "name": "Health",
+    "subcategories": [
+      {
+        "id": "d18ce4d7-9eee-4d25-9b9b-9ad0d1d7ac8e",
+        "name": "Doctor"
+      },
+      {
+        "id": "a6af6ce0-ff1d-45b8-93f5-ec4b1282ec7e",
+        "name": "Medicine"
+      },
+      {
+        "id": "7cc99930-e69e-45d8-a1e2-ad2e07449714",
+        "name": "Insurance"
+      },
+      {
+        "id": "9450f649-1251-48a4-977c-69286ff80ee1",
+        "name": "Fitness"
+      },
+      {
+        "id": "4a3f697f-0f13-4ad2-b91c-1d0cbc887a5e",
+        "name": "Lab Tests"
+      }
+    ]
+  },
+  {
+    "id": "83646836-87b0-4b3f-b101-7e1c8c8500e1",
+    "name": "Entertainment",
+    "subcategories": [
+      {
+        "id": "f2b49a2a-5417-45d7-bb80-a23364985948",
+        "name": "Movies"
+      },
+      {
+        "id": "5966d6b5-0f2c-41c0-bdb5-0828c68b49a1",
+        "name": "OTT Subscriptions"
+      },
+      {
+        "id": "2d7d02eb-49f1-41a7-aadb-8e5ce29d9c9f",
+        "name": "Gaming"
+      },
+      {
+        "id": "b1631293-8ec5-4166-940f-7ccd0eba47d6",
+        "name": "Events"
+      },
+      {
+        "id": "f8964585-f06d-421f-b1ae-a827e96b2d25",
+        "name": "Books"
+      }
+    ]
+  },
+  {
+    "id": "45179d44-ac56-4b1b-94ed-60b2574fc7fb",
+    "name": "Travel",
+    "subcategories": [
+      {
+        "id": "c4132f4a-f649-4ea1-a186-103662c6a848",
+        "name": "Flights"
+      },
+      {
+        "id": "382350c2-c583-454c-b162-4a96240ef0ea",
+        "name": "Hotels"
+      },
+      {
+        "id": "c02b54cc-c730-4a72-a65c-71d08748cbb1",
+        "name": "Local Transport"
+      },
+      {
+        "id": "a3e98369-da4c-45ca-b9b2-1a6f84562694",
+        "name": "Activities"
+      },
+      {
+        "id": "32dcb091-59f3-48e4-b74b-d5eea01a8c0b",
+        "name": "Visa"
+      }
+    ]
+  },
+  {
+    "id": "380e4edc-a2ac-4090-b181-8418bcec3180",
+    "name": "Education",
+    "subcategories": [
+      {
+        "id": "4b50dd8b-0901-49f4-bcb9-78d2eb72bab0",
+        "name": "Courses"
+      },
+      {
+        "id": "393e3315-5786-42e4-b2ad-dc77524cf183",
+        "name": "Books"
+      },
+      {
+        "id": "564f3766-cc66-42d6-8e4b-3697a1b2bf7a",
+        "name": "Certifications"
+      },
+      {
+        "id": "719a89ed-533a-4be2-a51a-3b58b573b894",
+        "name": "Software"
+      }
+    ]
+  },
+  {
+    "id": "42efeb5d-82dd-41df-8d98-f2b06faa55d9",
+    "name": "Family",
+    "subcategories": [
+      {
+        "id": "2b02579b-f8b3-4ed0-822d-e81b2e83fabb",
+        "name": "Kids"
+      },
+      {
+        "id": "76e1ab66-02ad-4f7b-8c26-7bdef644cb78",
+        "name": "Parents"
+      },
+      {
+        "id": "4d9c1832-2696-478f-a209-959bf419567c",
+        "name": "Pets"
+      },
+      {
+        "id": "7476c61c-b238-4441-a761-574c12c5bec9",
+        "name": "Household"
+      }
+    ]
+  },
+  {
+    "id": "8b86c076-8c2c-46eb-9dcc-daa3fb7c672a",
+    "name": "Finance",
+    "subcategories": [
+      {
+        "id": "90ec34d9-e7de-408f-8b8d-f2835b6a07ff",
+        "name": "Loan EMI"
+      },
+      {
+        "id": "79c5f02b-5740-458a-b194-823613448922",
+        "name": "Investment"
+      },
+      {
+        "id": "0808258c-29d7-422e-a42f-1c86486e093e",
+        "name": "Tax"
+      },
+      {
+        "id": "48b822fd-c687-40a7-b735-d071c059e9ee",
+        "name": "Bank Charges"
+      }
+    ]
+  },
+  {
+    "id": "677297cb-10a3-4c36-ba6c-1fcf05a24868",
+    "name": "Income",
+    "subcategories": [
+      {
+        "id": "a5a4e057-9866-4df0-a470-7fa1eda5bed1",
+        "name": "Salary"
+      },
+      {
+        "id": "03e350d3-48f4-48e8-add0-72ce09fd72b0",
+        "name": "Bonus"
+      },
+      {
+        "id": "2c4dee52-df18-4020-857a-c147f4438ad4",
+        "name": "Freelance"
+      },
+      {
+        "id": "59178cc0-effd-4e80-901f-16415f13e5c7",
+        "name": "Interest"
+      },
+      {
+        "id": "402270ce-11f2-4b9d-a2a3-baf6915d0ac6",
+        "name": "Refund"
+      },
+      {
+        "id": "b5927511-786e-4284-94b0-a8173208d71d",
+        "name": "Other Income"
+      }
+    ]
+  },
+  {
+    "id": "df44bd78-a8fb-4f0e-9314-7420588fee1f",
+    "name": "Other",
+    "subcategories": [
+      {
+        "id": "4d261f80-6209-4cf8-a633-fc3ed859b9c7",
+        "name": "Donation"
+      },
+      {
+        "id": "daecf4e3-a5a1-452a-a5bf-09596eefdd80",
+        "name": "Fees"
+      },
+      {
+        "id": "f324bb0f-7412-48fd-92c0-46582e7efda9",
+        "name": "Miscellaneous"
+      }
+    ]
+  }
+]

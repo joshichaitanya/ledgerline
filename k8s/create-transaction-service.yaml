@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: create-transaction-service
+  namespace: scalable-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: create-transaction-service
+  template:
+    metadata:
+      labels:
+        app: create-transaction-service
+    spec:
+      # Runs this service's migrations (event_store) before the app starts, on
+      # every deploy - no manual `yarn migrate` (docs/TODO.md item 10). Safe
+      # with several replicas starting at once: node-pg-migrate holds a
+      # database lock while it runs and skips migrations already applied.
+      initContainers:
+        - name: migrate
+          image: create-transaction-service:local
+          imagePullPolicy: IfNotPresent
+          command: ["yarn", "migrate:up"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: EVENT_STORE_DIRECT_DATABASE_URL
+      containers:
+        - name: create-transaction-service
+          image: create-transaction-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: EVENT_STORE_DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: create-transaction-service
+  namespace: scalable-demo
+spec:
+  selector:
+    app: create-transaction-service
+  ports:
+    - port: 3000

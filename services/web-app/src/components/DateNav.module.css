@@ -1,0 +1,108 @@
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.arrowButton {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* Buttons don't inherit text color, and the arrow icons use it
+     (currentColor) - without this they're black on the dark theme. */
+  color: var(--color-text);
+}
+
+.arrowButton:hover {
+  background: var(--color-hover-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.arrowButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--color-card);
+  border-color: var(--color-border);
+  color: inherit;
+}
+
+.arrowButton svg {
+  width: 18px;
+  height: 18px;
+  color: inherit;
+}
+
+.dateDisplay {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-card);
+  min-width: 140px;
+  text-align: center;
+}
+
+.dateDisplay:hover {
+  border-color: var(--color-accent);
+}
+
+/* The real <input type="date"> sits invisibly on top of this box
+   (.hiddenInput), so its own focus ring can't be seen - show one on the
+   visible box instead whenever the input inside it has keyboard focus. */
+.dateDisplay:has(.hiddenInput:focus-visible) {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 2px;
+}
+
+.hiddenInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.todayButton {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent-text);
+}
+
+.todayButton:hover {
+  background: var(--color-selected-bg);
+  border-color: var(--color-accent);
+}
+
+@media (max-width: 480px) {
+  .nav {
+    gap: 8px;
+  }
+
+  .dateDisplay {
+    min-width: 0;
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .todayButton {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+}

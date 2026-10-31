@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: get-transactions-service
+  namespace: scalable-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: get-transactions-service
+  template:
+    metadata:
+      labels:
+        app: get-transactions-service
+    spec:
+      containers:
+        - name: get-transactions-service
+          image: get-transactions-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: scalable-demo-config
+                  key: REDIS_URL
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: TRANSACTIONS_DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: get-transactions-service
+  namespace: scalable-demo
+spec:
+  selector:
+    app: get-transactions-service
+  ports:
+    - port: 3000

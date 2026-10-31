@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scalable-demo-config
+  namespace: scalable-demo
+data:
+  KAFKA_BROKER: "kafka:9092"
+  POLL_CRON_SCHEDULE: "*/10 * * * * *"
+  REDIS_URL: "redis://spend-summary-cache:6379"
+  # NEXT_PUBLIC_* vars are NOT set here on purpose: Next.js inlines them
+  # into the browser bundle at *build time*, and the browser (outside the
+  # cluster) can't reach internal service DNS names anyway. Set as a Docker
+  # build arg instead, pointing at the gateway's Ingress host (web-app calls
+  # only api-gateway now, not each service directly - see
+  # infrastructure/api-gateway/README.md):
+  #   docker build \
+  #     --build-arg NEXT_PUBLIC_API_GATEWAY_URL=http://api-gateway.scalable-demo.local \
+  #     -t web-app .

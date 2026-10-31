@@ -1,0 +1,157 @@
+_format_version: "3.0"
+
+# DB-less mode: Kong reads this file at startup instead of needing its own
+# Postgres/Cassandra - one less stateful thing to run, and this file is the
+# single source of truth for routing/plugins (checked into git, not
+# configured by hand via Kong's admin API).
+
+services:
+  - name: auth-service
+    url: http://auth-service:3000
+    routes:
+      # strip_path: false on every route below - Kong's default is `true`,
+      # which strips the matched path before forwarding upstream (so
+      # "/signup" would arrive at auth-service as "/", a 404). Every
+      # upstream service here expects the exact same path externally and
+      # internally, so none of these routes should strip anything.
+      #
+      # OPTIONS is added to every route's methods below (here and on every
+      # other route in this file) even though no upstream service actually
+      # handles OPTIONS itself: a route only matching its real verb means a
+      # CORS preflight request matches no route at all ("no Route matched"),
+      # so the global cors plugin never even gets a chance to answer it -
+      # Kong only runs plugins for requests that already matched a route.
+      # The cors plugin runs before jwt (higher priority), so adding OPTIONS
+      # here doesn't mean an unauthenticated preflight can reach protected
+      # routes - cors intercepts and answers it first.
+      #
+      # Deliberately NOT behind the jwt plugin - these are how a client
+      # gets a token in the first place.
+      - name: auth-signup
+        paths: ["/signup"]
+        methods: ["POST", "OPTIONS"]
+        strip_path: false
+      - name: auth-login
+        paths: ["/login"]
+        methods: ["POST", "OPTIONS"]
+        strip_path: false
+      - name: auth-refresh
+        paths: ["/refresh"]
+        methods: ["POST", "OPTIONS"]
+        strip_path: false
+      # logout/change-password DO need a valid token (to know which
+      # session/user), so they get the jwt plugin like everything else below.
+      - name: auth-logout
+        paths: ["/logout"]
+        methods: ["POST", "OPTIONS"]
+        strip_path: false
+        plugins:
+          - name: jwt
+      - name: auth-change-password
+        paths: ["/change-password"]
+        methods: ["PUT", "OPTIONS"]
+        strip_path: false
+        plugins:
+          - name: jwt
+
+  - name: create-transaction-service
+    url: http://create-transaction-service:3000
+    routes:
+      - name: create-transaction
+        paths: ["~/transactions$"]
+        methods: ["POST", "OPTIONS"]
+        strip_path: false
+        plugins:
+          - name: jwt
+
+  - name: update-transaction-service
+    url: http://update-transaction-service:3000
+    routes:
+      - name: update-transaction
+        paths: ["~/transactions/[^/]+$"]
+        methods: ["PUT", "OPTIONS"]
+        strip_path: false
+        plugins:
+          - name: jwt
+
+  - name: delete-transaction-service
+    url: http://delete-transaction-service:3000
+    routes:
+      - name: delete-transaction
+        paths: ["~/transactions/[^/]+$"]
+        methods: ["DELETE", "OPTIONS"]
+        strip_path: false
+        plugins:
+          - name: jwt
+
+  - name: get-transactions-service
+    url: http://get-transactions-service:3000
+    routes:
+      - name: get-transactions
+        # /transactions/summary: cached monthly spend totals (docs/adr/0011).
+        paths: ["~/transactions$", "~/transactions/summary$"]
+        methods: ["GET", "OPTIONS"]
+        strip_path: false
+        plugins:
+          - name: jwt
+
+  - name: categories-service
+    url: http://categories-service:3000
+    routes:
+      # GET lists, POST creates (docs/adr/0015) - one service for both,
+      # unlike transactions' separate write services.
+      - name: categories
+        paths: ["~/categories$", "~/categories/[^/]+/subcategories$"]
+        methods: ["GET", "POST", "OPTIONS"]
+        strip_path: false
+        plugins:
+          - name: jwt
+
+# One consumer standing in for "any client holding a token we issued" -
+# there's no per-client API key model here, every end user authenticates
+# via auth-service and gets the same kind of token. The jwt plugin matches
+# a token to this consumer via the `iss` claim (see
+# services/auth-service/src/services/auth.service.ts's TOKEN_ISSUER),
+# then verifies the signature with the secret below - which must be the
+# same JWT_SECRET auth-service signs with (see docker-compose.yml /
+# k8s/secret.yaml).
+consumers:
+  - username: web-app-clients
+    jwt_secrets:
+      - key: scalable-demo
+        algorithm: HS256
+        secret: local-dev-only-change-me
+
+# Applied to every route (not just the jwt-protected ones, so even
+# signup/login/refresh are covered). policy: redis (not local) - local would
+# have each gateway replica track its own count, so the real limit becomes
+# 100 * replica count instead of 100. Reuses spend-summary-cache (already in
+# this stack, otherwise unused so far - see docs/TODO.md item 5) rather than
+# standing up a dedicated Redis just for this.
+plugins:
+  # Per client IP (docs/adr/0016). NOT the default (`consumer`): there's only
+  # one consumer (web-app-clients) for every token, so counting per consumer
+  # meant ALL logged-in users shared a single 100/min budget.
+  #
+  # 1000/min here is for local docker-compose only - every e2e test runs from
+  # this one machine (one IP), and a parallel run goes well past 100/min.
+  # k8s/api-gateway.yaml keeps the real 100/min; this is the one value the
+  # two copies deliberately don't share.
+  - name: rate-limiting
+    config:
+      minute: 1000
+      limit_by: ip
+      policy: redis
+      redis:
+        host: spend-summary-cache
+        port: 6379
+  - name: cors
+    config:
+      # Explicit origin, not "*" - credentials: true (required for the
+      # browser to send/receive the httpOnly refresh-token cookie
+      # cross-origin) is incompatible with a wildcard origin; browsers
+      # reject that combination outright.
+      origins: ["http://localhost:3100"]
+      credentials: true
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      headers: ["Content-Type", "Authorization"]

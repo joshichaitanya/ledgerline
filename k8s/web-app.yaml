@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: scalable-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+        - name: web-app
+          # Build with:
+          #   docker build \
+          #     --build-arg NEXT_PUBLIC_API_GATEWAY_URL=http://api-gateway.scalable-demo.local \
+          #     -t web-app:local .
+          # web-app calls only api-gateway now (see infrastructure/api-gateway/README.md
+          # and k8s/api-gateway.yaml), not each service directly - apply
+          # k8s/api-gateway.yaml before building/deploying this.
+          image: web-app:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: scalable-demo
+spec:
+  selector:
+    app: web-app
+  ports:
+    - port: 3000

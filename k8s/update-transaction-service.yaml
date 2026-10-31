@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: update-transaction-service
+  namespace: scalable-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: update-transaction-service
+  template:
+    metadata:
+      labels:
+        app: update-transaction-service
+    spec:
+      containers:
+        - name: update-transaction-service
+          image: update-transaction-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: EVENT_STORE_DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: update-transaction-service
+  namespace: scalable-demo
+spec:
+  selector:
+    app: update-transaction-service
+  ports:
+    - port: 3000

@@ -1,0 +1,21 @@
+.toggle {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text);
+}
+
+.toggle:hover {
+  background: var(--color-hover-bg);
+  border-color: var(--color-accent);
+}
+
+.toggle svg {
+  width: 18px;
+  height: 18px;
+}

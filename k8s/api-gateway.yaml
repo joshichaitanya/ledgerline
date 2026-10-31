@@ -1,0 +1,220 @@
+# See infrastructure/api-gateway/README.md and docs/adr/0008-api-gateway-kong.md.
+# This is the ONLY entry point every other backend service is reached
+# through - a single replica would mean zero gateway capacity (everything
+# unreachable) during any crash/restart/rollout, so this isn't `replicas: 1`
+# the way most other services in this repo are.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: scalable-demo
+data:
+  # Keep this in sync with infrastructure/api-gateway/kong.yml by hand -
+  # there's no build step that generates one from the other.
+  kong.yml: |
+    _format_version: "3.0"
+
+    services:
+      - name: auth-service
+        url: http://auth-service:3000
+        routes:
+          - name: auth-signup
+            paths: ["/signup"]
+            methods: ["POST", "OPTIONS"]
+            strip_path: false
+          - name: auth-login
+            paths: ["/login"]
+            methods: ["POST", "OPTIONS"]
+            strip_path: false
+          - name: auth-refresh
+            paths: ["/refresh"]
+            methods: ["POST", "OPTIONS"]
+            strip_path: false
+          - name: auth-logout
+            paths: ["/logout"]
+            methods: ["POST", "OPTIONS"]
+            strip_path: false
+            plugins:
+              - name: jwt
+          - name: auth-change-password
+            paths: ["/change-password"]
+            methods: ["PUT", "OPTIONS"]
+            strip_path: false
+            plugins:
+              - name: jwt
+
+      - name: create-transaction-service
+        url: http://create-transaction-service:3000
+        routes:
+          - name: create-transaction
+            paths: ["~/transactions$"]
+            methods: ["POST", "OPTIONS"]
+            strip_path: false
+            plugins:
+              - name: jwt
+
+      - name: update-transaction-service
+        url: http://update-transaction-service:3000
+        routes:
+          - name: update-transaction
+            paths: ["~/transactions/[^/]+$"]
+            methods: ["PUT", "OPTIONS"]
+            strip_path: false
+            plugins:
+              - name: jwt
+
+      - name: delete-transaction-service
+        url: http://delete-transaction-service:3000
+        routes:
+          - name: delete-transaction
+            paths: ["~/transactions/[^/]+$"]
+            methods: ["DELETE", "OPTIONS"]
+            strip_path: false
+            plugins:
+              - name: jwt
+
+      - name: get-transactions-service
+        url: http://get-transactions-service:3000
+        routes:
+          - name: get-transactions
+            # /transactions/summary: cached monthly spend totals (docs/adr/0011).
+            paths: ["~/transactions$", "~/transactions/summary$"]
+            methods: ["GET", "OPTIONS"]
+            strip_path: false
+            plugins:
+              - name: jwt
+
+      - name: categories-service
+        url: http://categories-service:3000
+        routes:
+          # GET lists, POST creates (docs/adr/0015) - one service for both,
+          # unlike transactions' separate write services.
+          - name: categories
+            paths: ["~/categories$", "~/categories/[^/]+/subcategories$"]
+            methods: ["GET", "POST", "OPTIONS"]
+            strip_path: false
+            plugins:
+              - name: jwt
+
+    consumers:
+      - username: web-app-clients
+        jwt_secrets:
+          - key: scalable-demo
+            algorithm: HS256
+            secret: local-dev-only-change-me
+
+    plugins:
+      # Per client IP (docs/adr/0016). NOT the default (`consumer`): there's
+      # only one consumer (web-app-clients) for every token, so counting per
+      # consumer meant ALL logged-in users shared a single 100/min budget.
+      # infrastructure/api-gateway/kong.yml uses 1000/min (local docker-compose,
+      # for e2e runs from one machine) - the one value the two copies
+      # deliberately don't share.
+      - name: rate-limiting
+        config:
+          minute: 100
+          limit_by: ip
+          policy: redis
+          redis:
+            host: spend-summary-cache
+            port: 6379
+      - name: cors
+        config:
+          # Explicit origin, not "*" - credentials: true (required for the
+          # httpOnly refresh-token cookie to work cross-origin) is
+          # incompatible with a wildcard origin.
+          origins: ["http://app.scalable-demo.local"]
+          credentials: true
+          methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+          headers: ["Content-Type", "Authorization"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: scalable-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            name: api-gateway-config
+      containers:
+        - name: api-gateway
+          image: kong:3.7
+          ports:
+            - containerPort: 8000
+          env:
+            - name: KONG_DATABASE
+              value: "off"
+            - name: KONG_DECLARATIVE_CONFIG
+              value: /kong/kong.yml
+            - name: KONG_PROXY_ACCESS_LOG
+              value: /dev/stdout
+            - name: KONG_ADMIN_ACCESS_LOG
+              value: /dev/stdout
+            - name: KONG_PROXY_ERROR_LOG
+              value: /dev/stderr
+            - name: KONG_ADMIN_ERROR_LOG
+              value: /dev/stderr
+            # See docker-compose.yml's api-gateway service for why this is
+            # 1, not Kong's per-CPU-core default.
+            - name: KONG_NGINX_WORKER_PROCESSES
+              value: "1"
+          volumeMounts:
+            - name: config
+              mountPath: /kong
+          # A still-starting pod (or one whose declarative config failed to
+          # load) must not receive traffic - readinessProbe keeps it out of
+          # the Service's endpoints until "kong health" actually passes,
+          # same check docker-compose's healthcheck uses.
+          readinessProbe:
+            exec:
+              command: ["kong", "health"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["kong", "health"]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: scalable-demo
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - port: 8000
+---
+# Ensures a voluntary disruption (node drain, rolling update) can't evict
+# every replica at once - at least 1 must stay up. With replicas: 2 above,
+# that means disruptions happen one pod at a time, never both together.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway
+  namespace: scalable-demo
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: api-gateway

@@ -1,0 +1,176 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-connect-cdc-config
+  namespace: scalable-demo
+data:
+  event-store-connector.json: |
+    {
+      "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+      "database.hostname": "event-store-db",
+      "database.port": "5432",
+      "database.user": "postgres",
+      "database.password": "postgres",
+      "database.dbname": "event_store_db",
+      "topic.prefix": "event_store",
+
+      "table.include.list": "public.event_store",
+      "plugin.name": "pgoutput",
+      "slot.name": "event_store_cdc_slot",
+      "publication.name": "event_store_cdc_publication",
+      "publication.autocreate.mode": "filtered",
+
+      "message.key.columns": "public.event_store:item_id",
+
+      "topic.creation.default.partitions": "4",
+      "topic.creation.default.replication.factor": "1",
+
+      "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "key.converter.schemas.enable": "false",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter.schemas.enable": "false"
+    }
+  prepare-publication.sql: |
+    -- See infrastructure/cdc/prepare-publication.sql for the full explanation:
+    -- Debezium has no config property that actually sets
+    -- publish_via_partition_root, so it must be set on the publication
+    -- directly, before the connector starts streaming from it.
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'event_store_cdc_publication') THEN
+        CREATE PUBLICATION event_store_cdc_publication FOR TABLE public.event_store
+          WITH (publish_via_partition_root = true);
+      ELSE
+        ALTER PUBLICATION event_store_cdc_publication SET (publish_via_partition_root = true);
+      END IF;
+    END $$;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-connect
+  namespace: scalable-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-connect
+  template:
+    metadata:
+      labels:
+        app: kafka-connect
+    spec:
+      volumes:
+        - name: cdc-config
+          configMap:
+            name: kafka-connect-cdc-config
+      # Sets publish_via_partition_root on the publication before Connect (and
+      # so the connector) starts. Waits for the event_store table first: it's
+      # created by create-transaction-service's migrate init container, which
+      # may not have run yet (no ordering between Deployments in k8s).
+      initContainers:
+        - name: prepare-publication
+          image: postgres:16-alpine
+          volumeMounts:
+            - name: cdc-config
+              mountPath: /cdc
+          command:
+            - sh
+            - -c
+            - |
+              DB=postgresql://postgres:postgres@event-store-db:5432/event_store_db
+              until psql "$DB" -tAc "SELECT to_regclass('public.event_store')" 2>/dev/null | grep -q event_store; do
+                echo "Waiting for the event_store table (create-transaction-service's migration)..."
+                sleep 5
+              done
+              psql "$DB" -f /cdc/prepare-publication.sql
+      containers:
+        # Registers the Debezium connector, and keeps it registered - replaces
+        # the old one-off Job, which only ran on first apply and had to be
+        # `kubectl delete`d to run again (docs/TODO.md item 10). Every 30s:
+        # PUT the config if the connector is missing (e.g. a fresh Connect) or
+        # the config file changed (an updated ConfigMap reaches this mounted
+        # volume within ~1 min of `kubectl apply`). PUT .../config is
+        # idempotent, but is still skipped when nothing changed, so the
+        # connector isn't needlessly reconfigured every 30s.
+        - name: connector-registrar
+          image: curlimages/curl:8.10.1
+          volumeMounts:
+            - name: cdc-config
+              mountPath: /cdc
+          command:
+            - sh
+            - -c
+            - |
+              CONNECT=http://localhost:8083
+              CONFIG=/cdc/event-store-connector.json
+              registered=""
+              while true; do
+                if curl -sf "$CONNECT/connectors" > /dev/null; then
+                  current=`sha256sum "$CONFIG" | cut -d' ' -f1`
+                  if [ "$current" != "$registered" ] || ! curl -sf "$CONNECT/connectors/event-store-connector" > /dev/null; then
+                    if curl -sf -X PUT -H "Content-Type: application/json" --data @"$CONFIG" \
+                        "$CONNECT/connectors/event-store-connector/config" > /dev/null; then
+                      echo "Registered event-store-connector (config $current)"
+                      registered="$current"
+                    else
+                      echo "Registering event-store-connector failed - retrying"
+                    fi
+                  fi
+                else
+                  echo "Waiting for kafka-connect..."
+                fi
+                sleep 30
+              done
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "16Mi"
+            limits:
+              cpu: "50m"
+              memory: "32Mi"
+        - name: kafka-connect
+          image: debezium/connect:2.7.3.Final
+          ports:
+            - containerPort: 8083
+          env:
+            - name: BOOTSTRAP_SERVERS
+              value: "kafka:9092"
+            - name: GROUP_ID
+              value: "cdc-connect-cluster"
+            - name: CONFIG_STORAGE_TOPIC
+              value: "cdc_connect_configs"
+            - name: OFFSET_STORAGE_TOPIC
+              value: "cdc_connect_offsets"
+            - name: STATUS_STORAGE_TOPIC
+              value: "cdc_connect_status"
+          readinessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-connect
+  namespace: scalable-demo
+spec:
+  selector:
+    app: kafka-connect
+  ports:
+    - port: 8083

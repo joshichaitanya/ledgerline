@@ -1,0 +1,11 @@
+# Applies to builds whose context is the repo root - every service that
+# needs services/toolkit alongside it (a local `file:../toolkit` dependency,
+# see services/toolkit/README.md): auth-service, create/update/delete-
+# transaction-service, get-transactions-service, categories-service. The
+# per-service .dockerignore files are ignored for these builds, so anything
+# they exclude has to be excluded here too.
+**/node_modules
+**/dist
+**/test
+**/vitest.config.ts
+.git

@@ -1,0 +1,69 @@
+# The Operation consumer - see services/db-writer-service/README.md.
+# event_store.public.event_store has 4 partitions (topic.creation.default.partitions
+# in infrastructure/cdc/event-store-connector.json), so up to 4 replicas can
+# share the work; more than that would sit idle.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-writer-service
+  namespace: scalable-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: db-writer-service
+  template:
+    metadata:
+      labels:
+        app: db-writer-service
+    spec:
+      # Runs this service's migrations (transactions-db) before the app
+      # starts, on every deploy - no manual `yarn migrate` (docs/TODO.md item
+      # 10). Safe with both replicas starting at once: node-pg-migrate holds a
+      # database lock while it runs and skips migrations already applied.
+      initContainers:
+        - name: migrate
+          image: db-writer-service:local
+          imagePullPolicy: IfNotPresent
+          command: ["yarn", "migrate:transactions:up"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: TRANSACTIONS_DATABASE_URL
+      # Time to leave the Kafka consumer group cleanly (SIGTERM handler in
+      # src/index.ts) - same reason as stop_grace_period in docker-compose.yml.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: db-writer-service
+          image: db-writer-service:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: scalable-demo-config
+                  key: REDIS_URL
+            - name: KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: scalable-demo-config
+                  key: KAFKA_BROKER
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: TRANSACTIONS_DATABASE_URL
+          livenessProbe:
+            exec:
+              command: ["pgrep", "-f", "node dist/index.js"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

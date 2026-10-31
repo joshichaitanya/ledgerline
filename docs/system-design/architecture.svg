@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1520 1060" width="1520" height="1060" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Ledgerline: high-level system design</title>
+  <style>
+    .box   { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; }
+    .store { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.5; }
+    .gw    { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 2; }
+    .wbox  { fill: #fff7ed; stroke: #ea580c; stroke-width: 1.5; }
+    .rbox  { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.5; }
+    .cbox  { fill: #ecfdf5; stroke: #059669; stroke-width: 1.5; }
+    .abox  { fill: #faf5ff; stroke: #7c3aed; stroke-width: 1.5; }
+    .group { fill: none; stroke: #ea580c; stroke-width: 1.2; stroke-dasharray: 6 4; }
+    .t     { font-size: 14px; font-weight: 600; fill: #0f172a; text-anchor: middle; }
+    .s     { font-size: 11px; fill: #475569; text-anchor: middle; }
+    .lbl   { font-size: 11px; fill: #334155; }
+    .hdr   { font-size: 13px; font-weight: 700; fill: #64748b; text-anchor: middle; letter-spacing: 1px; }
+    .ln    { fill: none; stroke-width: 1.8; }
+    .gray   { stroke: #64748b; }
+    .purple { stroke: #7c3aed; }
+    .orange { stroke: #ea580c; }
+    .blue   { stroke: #2563eb; }
+    .green  { stroke: #059669; }
+    .dash   { stroke-dasharray: 6 4; }
+  </style>
+  <defs>
+    <marker id="a-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+    <marker id="a-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/></marker>
+    <marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker>
+    <marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker>
+    <marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#059669"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1520" height="1060" fill="#ffffff"/>
+
+  <!-- Title and column headers -->
+  <text x="760" y="38" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">Ledgerline: high-level system design</text>
+  <text x="115" y="80" class="hdr">CLIENT</text>
+  <text x="345" y="80" class="hdr">EDGE</text>
+  <text x="625" y="80" class="hdr">SERVICES</text>
+  <text x="1090" y="80" class="hdr">DATA &amp; STREAMING</text>
+  <line x1="470" y1="90" x2="470" y2="870" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="775" y1="90" x2="775" y2="200" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Client -->
+  <rect x="30" y="400" width="170" height="80" rx="10" class="box"/>
+  <text x="115" y="433" class="t">web-app</text>
+  <text x="115" y="452" class="s">Next.js / React</text>
+  <text x="115" y="467" class="s">(browser)</text>
+
+  <!-- Gateway -->
+  <rect x="250" y="100" width="190" height="760" rx="12" class="gw"/>
+  <text x="345" y="400" class="t">api-gateway</text>
+  <text x="345" y="418" class="s">Kong (DB-less)</text>
+  <text x="345" y="448" class="s">• verify JWT</text>
+  <text x="345" y="466" class="s">• rate limit per client IP</text>
+  <text x="345" y="484" class="s">• CORS</text>
+  <text x="345" y="502" class="s">• route to services</text>
+
+  <!-- Services -->
+  <rect x="510" y="110" width="230" height="70" rx="8" class="abox"/>
+  <text x="625" y="138" class="t">auth-service</text>
+  <text x="625" y="157" class="s">signup · login · refresh · logout</text>
+
+  <rect x="495" y="222" width="260" height="268" rx="10" class="group"/>
+  <text x="625" y="240" text-anchor="middle" font-size="11" font-weight="600" fill="#ea580c">WRITE SERVICES (append event → 202)</text>
+  <rect x="510" y="252" width="230" height="64" rx="8" class="wbox"/>
+  <text x="625" y="279" class="t">create-transaction-service</text>
+  <text x="625" y="297" class="s">POST /transactions</text>
+  <rect x="510" y="333" width="230" height="64" rx="8" class="wbox"/>
+  <text x="625" y="360" class="t">update-transaction-service</text>
+  <text x="625" y="378" class="s">PUT /transactions/:id</text>
+  <rect x="510" y="414" width="230" height="64" rx="8" class="wbox"/>
+  <text x="625" y="441" class="t">delete-transaction-service</text>
+  <text x="625" y="459" class="s">DELETE /transactions/:id</text>
+
+  <rect x="510" y="560" width="230" height="70" rx="8" class="rbox"/>
+  <text x="625" y="588" class="t">get-transactions-service</text>
+  <text x="625" y="607" class="s">GET /transactions · /summary</text>
+
+  <rect x="510" y="760" width="230" height="70" rx="8" class="cbox"/>
+  <text x="625" y="788" class="t">categories-service</text>
+  <text x="625" y="807" class="s">GET / POST /categories</text>
+
+  <!-- Data stores (cylinders) -->
+  <!-- auth-db -->
+  <path d="M800,110 a85,10 0 0 1 170,0 v70 a85,10 0 0 1 -170,0 z" class="store"/>
+  <ellipse cx="885" cy="110" rx="85" ry="10" class="store"/>
+  <text x="885" y="145" class="t">auth-db</text>
+  <text x="885" y="163" class="s">users · refresh_tokens</text>
+
+  <!-- pgbouncer -->
+  <rect x="800" y="335" width="150" height="60" rx="8" class="box"/>
+  <text x="875" y="361" class="t">pgbouncer</text>
+  <text x="875" y="379" class="s">connection pool</text>
+
+  <!-- partition manager -->
+  <rect x="1010" y="212" width="200" height="60" rx="8" class="box" stroke-dasharray="5 3"/>
+  <text x="1110" y="237" class="t">partition-manager</text>
+  <text x="1110" y="255" class="s">CronJob: add tomorrow, drop old</text>
+
+  <!-- event-store-db -->
+  <path d="M1010,325 a100,11 0 0 1 200,0 v90 a100,11 0 0 1 -200,0 z" class="store" style="stroke:#ea580c"/>
+  <ellipse cx="1110" cy="325" rx="100" ry="11" class="store" style="stroke:#ea580c"/>
+  <text x="1110" y="362" class="t">event-store-db</text>
+  <text x="1110" y="380" class="s">insert-only event_store</text>
+  <text x="1110" y="396" class="s">daily partitions × 4 hash</text>
+  <text x="1110" y="411" class="s">TTL = drop old partition</text>
+
+  <!-- CDC -->
+  <rect x="1270" y="325" width="200" height="80" rx="8" class="wbox"/>
+  <text x="1370" y="355" class="t">CDC</text>
+  <text x="1370" y="374" class="s">Debezium + Kafka Connect</text>
+  <text x="1370" y="390" class="s">reads the write-ahead log</text>
+
+  <!-- Kafka -->
+  <rect x="1270" y="500" width="200" height="100" rx="8" class="wbox"/>
+  <text x="1370" y="530" class="t">Kafka (KRaft)</text>
+  <text x="1370" y="550" class="s" font-size="10">event_store.public.event_store</text>
+  <text x="1370" y="567" class="s">4 partitions</text>
+  <text x="1370" y="584" class="s">key = item_id</text>
+
+  <!-- DLQ -->
+  <rect x="1270" y="680" width="200" height="60" rx="8" class="box" style="stroke:#dc2626"/>
+  <text x="1370" y="706" class="t">DLQ topic</text>
+  <text x="1370" y="724" class="s">events that can never apply</text>
+
+  <!-- db-writer -->
+  <rect x="1010" y="520" width="200" height="80" rx="8" class="wbox"/>
+  <text x="1110" y="550" class="t">db-writer-service</text>
+  <text x="1110" y="569" class="s">idempotent · tombstone-</text>
+  <text x="1110" y="584" class="s">checked · owner-checked</text>
+
+  <!-- transactions-db -->
+  <path d="M800,515 a85,10 0 0 1 170,0 v85 a85,10 0 0 1 -170,0 z" class="store" style="stroke:#2563eb"/>
+  <ellipse cx="885" cy="515" rx="85" ry="10" class="store" style="stroke:#2563eb"/>
+  <text x="885" y="552" class="t">transactions-db</text>
+  <text x="885" y="570" class="s">read store</text>
+  <text x="885" y="586" class="s">deleted_at · last_event_at</text>
+
+  <!-- redis -->
+  <path d="M1010,695 a100,10 0 0 1 200,0 v75 a100,10 0 0 1 -200,0 z" class="store" style="stroke:#dc2626"/>
+  <ellipse cx="1110" cy="695" rx="100" ry="10" class="store" style="stroke:#dc2626"/>
+  <text x="1110" y="728" class="t">Redis</text>
+  <text x="1110" y="746" class="s">spend-summary-cache</text>
+  <text x="1110" y="762" class="s">+ rate-limit counters</text>
+
+  <!-- reference-db -->
+  <path d="M800,760 a85,10 0 0 1 170,0 v70 a85,10 0 0 1 -170,0 z" class="store" style="stroke:#059669"/>
+  <ellipse cx="885" cy="760" rx="85" ry="10" class="store" style="stroke:#059669"/>
+  <text x="885" y="795" class="t">reference-db</text>
+  <text x="885" y="813" class="s">categories · subcategories</text>
+
+  <!-- Arrows: client → gateway -->
+  <path d="M200,440 L248,440" class="ln gray" marker-end="url(#a-gray)"/>
+  <text x="225" y="430" class="lbl" text-anchor="middle" font-size="10">HTTPS</text>
+
+  <!-- gateway → services -->
+  <path d="M440,145 L508,145" class="ln purple" marker-end="url(#a-purple)"/>
+  <path d="M440,284 L508,284" class="ln orange" marker-end="url(#a-orange)"/>
+  <path d="M440,365 L508,365" class="ln orange" marker-end="url(#a-orange)"/>
+  <path d="M440,446 L508,446" class="ln orange" marker-end="url(#a-orange)"/>
+  <path d="M440,595 L508,595" class="ln blue" marker-end="url(#a-blue)"/>
+  <path d="M440,795 L508,795" class="ln green" marker-end="url(#a-green)"/>
+
+  <!-- auth → auth-db -->
+  <path d="M740,145 L798,145" class="ln purple" marker-end="url(#a-purple)"/>
+
+  <!-- write services → pgbouncer → event store -->
+  <path d="M740,284 L770,284 L770,355 L798,355" class="ln orange" marker-end="url(#a-orange)"/>
+  <path d="M740,365 L798,365" class="ln orange" marker-end="url(#a-orange)"/>
+  <path d="M740,446 L770,446 L770,375 L798,375" class="ln orange" marker-end="url(#a-orange)"/>
+  <text x="875" y="325" class="lbl" text-anchor="middle">INSERT only</text>
+  <path d="M950,365 L1008,365" class="ln orange" marker-end="url(#a-orange)"/>
+
+  <!-- partition manager → event store -->
+  <path d="M1110,272 L1110,312" class="ln gray dash" marker-end="url(#a-gray)"/>
+
+  <!-- event store → CDC → Kafka → db-writer -->
+  <path d="M1210,365 L1268,365" class="ln orange" marker-end="url(#a-orange)"/>
+  <text x="1240" y="355" class="lbl" text-anchor="middle">WAL</text>
+  <path d="M1370,405 L1370,498" class="ln orange" marker-end="url(#a-orange)"/>
+  <text x="1380" y="450" class="lbl">publish every row</text>
+  <path d="M1270,560 L1212,560" class="ln orange" marker-end="url(#a-orange)"/>
+  <text x="1241" y="550" class="lbl" text-anchor="middle">consume</text>
+
+  <!-- db-writer → transactions-db / DLQ / Redis -->
+  <path d="M1010,560 L972,560" class="ln orange" marker-end="url(#a-orange)"/>
+  <text x="990" y="548" class="lbl" text-anchor="middle">upsert</text>
+  <path d="M1210,590 L1240,590 L1240,710 L1268,710" class="ln gray dash" marker-end="url(#a-gray)"/>
+  <text x="1248" y="655" class="lbl" fill="#dc2626">bad / wrong-owner</text>
+  <path d="M1110,600 L1110,683" class="ln gray dash" marker-end="url(#a-gray)"/>
+  <text x="1102" y="645" class="lbl" text-anchor="end">clear changed months</text>
+
+  <!-- get → transactions-db and Redis -->
+  <path d="M740,585 L798,585" class="ln blue" marker-end="url(#a-blue)"/>
+  <path d="M740,612 L775,612 L775,735 L1008,735" class="ln blue" marker-end="url(#a-blue)"/>
+  <text x="890" y="727" class="lbl" text-anchor="middle">cache-aside (1h TTL)</text>
+
+  <!-- categories → reference-db -->
+  <path d="M740,795 L798,795" class="ln green" marker-end="url(#a-green)"/>
+
+  <!-- gateway → Redis (rate limit) -->
+  <path d="M345,860 L345,900 L1110,900 L1110,782" class="ln purple dash" marker-end="url(#a-purple)"/>
+  <text x="700" y="892" class="lbl" text-anchor="middle">rate-limit counters (shared by all Kong pods)</text>
+
+  <!-- Legend -->
+  <rect x="30" y="935" width="1460" height="105" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="50" y="960" font-size="13" font-weight="700" fill="#0f172a">Legend</text>
+  <line x1="50" y1="980" x2="90" y2="980" class="ln purple"/><text x="98" y="984" class="lbl">auth / edge</text>
+  <line x1="200" y1="980" x2="240" y2="980" class="ln orange"/><text x="248" y="984" class="lbl">write path (async)</text>
+  <line x1="380" y1="980" x2="420" y2="980" class="ln blue"/><text x="428" y="984" class="lbl">read path</text>
+  <line x1="510" y1="980" x2="550" y2="980" class="ln green"/><text x="558" y="984" class="lbl">reference data (sync CRUD)</text>
+  <line x1="740" y1="980" x2="780" y2="980" class="ln gray dash"/><text x="788" y="984" class="lbl">side effect / background job</text>
+
+  <text x="50" y="1012" font-size="12" fill="#334155"><tspan font-weight="700">Write path:</tspan> ① write service INSERTs an event → 202 Accepted  ② Debezium reads the WAL  ③ Kafka (key = item_id keeps per-item order)  ④ db-writer upserts into transactions-db and clears cached months  ⑤ GET sees the change a moment later</text>
+  <text x="50" y="1030" font-size="12" fill="#334155"><tspan font-weight="700">Rule:</tspan> userId always comes from the verified JWT (checked at the gateway and again in each service), never from the request body.</text>
+</svg>

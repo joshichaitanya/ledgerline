@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      # Every service gets its own copy of toolkit (a `file:` dependency),
+      # and that copy needs toolkit's dist/ - so build it, then refresh the
+      # copies (see docs/TODO.md item 9).
+      - run: yarn --cwd services/toolkit build
+      - run: yarn install --frozen-lockfile --check-files
+
+      - name: Type-check
+        run: |
+          for s in auth-service create-transaction-service update-transaction-service \
+                   delete-transaction-service get-transactions-service categories-service \
+                   db-writer-service; do
+            echo "::group::$s"
+            yarn --cwd services/$s build
+            echo "::endgroup::"
+          done
+          yarn --cwd services/web-app tsc --noEmit
+
+      # Testcontainers starts real Postgres/Redis using the runner's Docker.
+      - name: Tests
+        run: yarn test

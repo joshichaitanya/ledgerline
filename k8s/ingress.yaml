@@ -1,0 +1,96 @@
+# Requires an ingress controller in the cluster, e.g.:
+#   minikube addons enable ingress
+# and these hostnames pointed at the cluster's ingress IP in /etc/hosts, e.g.:
+#   <minikube ip>  app.scalable-demo.local api.scalable-demo.local
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scalable-demo
+  namespace: scalable-demo
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: app.scalable-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-app
+                port:
+                  number: 3000
+    - host: api.scalable-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: create-transaction-service
+                port:
+                  number: 3000
+    - host: get-transactions.api.scalable-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: get-transactions-service
+                port:
+                  number: 3000
+    - host: categories.api.scalable-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: categories-service
+                port:
+                  number: 3000
+    - host: auth.api.scalable-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 3000
+    - host: update.api.scalable-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: update-transaction-service
+                port:
+                  number: 3000
+    - host: delete.api.scalable-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: delete-transaction-service
+                port:
+                  number: 3000
+    # web-app is built to call only this host now (see k8s/web-app.yaml,
+    # infrastructure/api-gateway/README.md) - the per-service hosts above
+    # stay for direct debugging (curl/psql-style access to one service),
+    # same reason docker-compose still exposes each service's own port too.
+    - host: api-gateway.scalable-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8000

@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: event-store-partition-manager
+  namespace: scalable-demo
+spec:
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: event-store-partition-manager
+              image: create-transaction-service:local
+              imagePullPolicy: IfNotPresent
+              command: ["yarn", "partitions:manage:built"]
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: scalable-demo-secrets
+                      key: EVENT_STORE_DATABASE_URL

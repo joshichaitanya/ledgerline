@@ -1,0 +1,51 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.headRow th {
+  text-align: left;
+  color: var(--color-muted);
+  font-weight: 500;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.row td {
+  padding: 14px 12px;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.subText {
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.categoryCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionsCell {
+  white-space: nowrap;
+  width: 10%;
+}
+
+.actionsGroup {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.row {
+  border-radius: var(--radius-md);
+}
+
+.row:hover {
+  background: var(--color-hover-bg);
+}

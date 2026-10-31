@@ -1,0 +1,25 @@
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "database.hostname": "event-store-db",
+  "database.port": "5432",
+  "database.user": "postgres",
+  "database.password": "postgres",
+  "database.dbname": "event_store_db",
+  "topic.prefix": "event_store",
+
+  "table.include.list": "public.event_store",
+  "plugin.name": "pgoutput",
+  "slot.name": "event_store_cdc_slot",
+  "publication.name": "event_store_cdc_publication",
+  "publication.autocreate.mode": "filtered",
+
+  "message.key.columns": "public.event_store:item_id",
+
+  "topic.creation.default.partitions": "4",
+  "topic.creation.default.replication.factor": "1",
+
+  "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "key.converter.schemas.enable": "false",
+  "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "value.converter.schemas.enable": "false"
+}

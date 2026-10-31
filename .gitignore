@@ -1,0 +1,15 @@
+node_modules
+dist
+.env*
+!.env.example
+*.log
+__pycache__
+.venv
+.next
+coverage
+*.tsbuildinfo
+.DS_Store
+.claude/settings.local.json
+# Playwright output (e2e/)
+playwright-report
+test-results

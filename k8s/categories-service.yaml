@@ -1,0 +1,80 @@
+# Lists/creates categories in reference-db - shared defaults plus each
+# user's own (docs/adr/0015). Replaced get-categories-service (mock data).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: categories-service
+  namespace: scalable-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: categories-service
+  template:
+    metadata:
+      labels:
+        app: categories-service
+    spec:
+      # Runs this service's migrations (reference-db, incl. the default
+      # categories) before the app starts, on every deploy - no manual
+      # `yarn migrate` (docs/TODO.md item 10). Safe with several replicas
+      # starting at once: node-pg-migrate holds a database lock while it runs
+      # and skips migrations already applied.
+      initContainers:
+        - name: migrate
+          image: categories-service:local
+          imagePullPolicy: IfNotPresent
+          command: ["yarn", "migrate:up"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: REFERENCE_DATABASE_URL
+      containers:
+        - name: categories-service
+          image: categories-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: REFERENCE_DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: scalable-demo-secrets
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: categories-service
+  namespace: scalable-demo
+spec:
+  selector:
+    app: categories-service
+  ports:
+    - port: 3000
